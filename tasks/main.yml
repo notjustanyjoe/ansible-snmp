@@ -1,0 +1,64 @@
+---
+# tasks file for ansible_snmp
+- name: Install SNMP Packages
+  package:
+    name:
+      - net-snmp
+      - net-snmp-utils
+      - pysnmp
+      - python-crypto
+    state: present
+
+- name: Configure SNMP Daemon
+  template:
+    src: 'snmpd.j2'
+    dest: /etc/sysconfig/snmpd
+    owner: root
+    group: root
+    mode: 0644
+    seuser: system_u
+    serole: object_r
+    setype: etc_t
+    selevel: s0
+  notify:
+    - restart_snmp
+
+- name: Check SNMP Config
+  template:
+    src: 'snmpd.conf.j2'
+    dest: /etc/snmp/snmpd.conf
+    owner: root
+    group: root
+    mode: 0600
+    seuser: system_u
+    serole: object_r
+    setype: etc_t
+    selevel: s0
+  register: check_snmp
+  check_mode: true
+
+- block:
+    - name: Ensure SNMP Service is stopped
+      service:
+        name: snmpd
+        state: stopped
+
+    - name: Ensure SNMP Config is updated
+      become: true
+      template:
+        src: 'snmpd.conf.j2'
+        dest: /etc/snmp/snmpd.conf
+        owner: root
+        group: root
+        mode: 0600
+        seuser: system_u
+        serole: object_r
+        setype: etc_t
+        selevel: s0
+  when: check_snmp.changed
+
+- name: Ensure SNMP is Started and Enabled
+  service:
+    name: snmpd
+    state: started
+    enabled: true

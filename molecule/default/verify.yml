@@ -1,0 +1,39 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Example assertion
+      assert:
+        that: true
+
+    - name: Verify SNMP Packages Status
+      package:
+        name:
+          - net-snmp
+          - net-snmp-utils
+          - pysnmp
+      check_mode: yes
+      register: pkg_status
+    - name: Verify SNMP Packages are installed
+      assert:
+        that:
+          - not pkg_status.changed
+
+    - name: Test SNMPv3
+      snmp_facts:
+        host: '{{ inventory_hostname }}'
+        version: v3
+        level: authPriv
+        integrity: sha
+        privacy: aes
+        username: snmp
+        authkey: snmp_password
+        privkey: snmp_encryption
+      register: snmp_response
+      ignore_errors: true
+    - name: Print the SNMPv3 snmp_response
+      debug:
+        var: snmp_response
